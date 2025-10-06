@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-configmap
+  namespace: n8n-carpiftw
+data:
+  # Základní konfigurace
+  N8N_HOST: "n8n.carpiftw.cz"
+  N8N_PORT: "5678"
+  N8N_PROTOCOL: "https"
+  WEBHOOK_URL: "https://n8n.carpiftw.cz/"
+
+  # Časová zóna
+  GENERIC_TIMEZONE: "Europe/Prague"
+
+  # Prostředí
+  NODE_ENV: "production"
+
+  # Databáze
+  DB_TYPE: "postgresdb"
+  DB_POSTGRESDB_HOST: "postgres-service"
+  DB_POSTGRESDB_PORT: "5432"
+
+  # Výkonnost
+  EXECUTIONS_PROCESS: "main"
+  EXECUTIONS_MODE: "regular"
+
+  # Limity
+  N8N_PAYLOAD_SIZE_MAX: "16"
+
+  # Editor
+  N8N_EDITOR_BASE_URL: "https://n8n.carpiftw.cz/"

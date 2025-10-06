@@ -1,0 +1,24 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Local environment files (should never be committed)
+.env
+.env.local
+*.secret
+
+# Kubernetes local configs (use GitHub Secrets instead)
+kubeconfig
+*.kubeconfig

@@ -1,0 +1,185 @@
+name: Deploy n8n to Kubernetes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'k8s/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deployment'
+        required: false
+        default: 'Manual deployment request'
+
+env:
+  # Kubernetes config setup
+  KUBECONFIG_SETUP: |
+    # Check if kubectl is available
+    if ! command -v kubectl &> /dev/null; then
+      if [ -f "$HOME/bin/kubectl" ]; then
+        export PATH=$HOME/bin:$PATH
+      else
+        echo "kubectl is not available. Ensure installation step succeeded."
+        exit 1
+      fi
+    fi
+
+    # Setup kubeconfig
+    mkdir -p $HOME/.kube
+    echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+    chmod 600 $HOME/.kube/config
+
+    # Create namespace if it doesn't exist
+    kubectl apply -f k8s/namespace.yaml
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log deployment info
+        run: |
+          echo "Deploying n8n to Kubernetes cluster"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual deployment: ${{ github.event.inputs.reason }}"
+          else
+            echo "Automatic deployment triggered by push to main"
+          fi
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+
+      - name: Setup kubectl and namespace
+        run: |
+          ${{ env.KUBECONFIG_SETUP }}
+          echo "Namespace created/verified"
+
+      - name: Create PostgreSQL secret
+        run: |
+          ${{ env.KUBECONFIG_SETUP }}
+
+          # Create Kubernetes secret for PostgreSQL credentials
+          kubectl create secret generic postgres-secret \
+            --namespace=n8n-carpiftw \
+            --from-literal=database="${{ secrets.POSTGRES_DATABASE }}" \
+            --from-literal=user="${{ secrets.POSTGRES_USER }}" \
+            --from-literal=password="${{ secrets.POSTGRES_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          echo "PostgreSQL secret created/updated"
+
+      - name: Create n8n encryption key secret
+        run: |
+          ${{ env.KUBECONFIG_SETUP }}
+
+          # Create Kubernetes secret for n8n encryption key
+          kubectl create secret generic n8n-secret \
+            --namespace=n8n-carpiftw \
+            --from-literal=encryption-key="${{ secrets.N8N_ENCRYPTION_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          echo "n8n encryption key secret created/updated"
+
+      - name: Deploy PostgreSQL
+        run: |
+          ${{ env.KUBECONFIG_SETUP }}
+
+          # Deploy PostgreSQL StatefulSet and Service
+          kubectl apply -f k8s/postgres-statefulset.yaml
+          kubectl apply -f k8s/postgres-service.yaml
+
+          echo "PostgreSQL manifests applied"
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          ${{ env.KUBECONFIG_SETUP }}
+
+          # Wait for PostgreSQL to be ready (max 3 minutes)
+          kubectl wait --for=condition=ready pod -l app=postgres \
+            -n n8n-carpiftw --timeout=180s || {
+              echo "PostgreSQL pod did not become ready in time"
+              kubectl describe pod -l app=postgres -n n8n-carpiftw
+              kubectl logs -l app=postgres -n n8n-carpiftw --tail=50
+              exit 1
+            }
+
+          echo "PostgreSQL is ready"
+
+      - name: Deploy n8n application
+        run: |
+          ${{ env.KUBECONFIG_SETUP }}
+
+          # Apply all n8n manifests
+          kubectl apply -f k8s/pvc-data.yaml
+          kubectl apply -f k8s/n8n-configmap.yaml
+          kubectl apply -f k8s/n8n-deployment.yaml
+          kubectl apply -f k8s/n8n-service.yaml
+          kubectl apply -f k8s/certificate.yaml
+          kubectl apply -f k8s/ingress.yaml
+
+          echo "n8n manifests applied"
+
+      - name: Wait for n8n deployment to be ready
+        run: |
+          ${{ env.KUBECONFIG_SETUP }}
+
+          # Restart deployment to ensure latest config
+          kubectl rollout restart deployment/n8n -n n8n-carpiftw
+
+          # Wait for rollout to complete (max 5 minutes)
+          kubectl rollout status deployment/n8n -n n8n-carpiftw --timeout=300s || {
+            echo "n8n deployment did not become ready in time"
+            kubectl describe deployment n8n -n n8n-carpiftw
+            kubectl describe pod -l app=n8n -n n8n-carpiftw
+            kubectl logs -l app=n8n -n n8n-carpiftw --tail=100
+            exit 1
+          }
+
+          echo "n8n deployment is ready"
+
+      - name: Verify deployment
+        run: |
+          ${{ env.KUBECONFIG_SETUP }}
+
+          echo "=== Deployment Status ==="
+          kubectl get deployments -n n8n-carpiftw
+
+          echo ""
+          echo "=== Pods Status ==="
+          kubectl get pods -n n8n-carpiftw -o wide
+
+          echo ""
+          echo "=== Services ==="
+          kubectl get svc -n n8n-carpiftw
+
+          echo ""
+          echo "=== Ingress Routes ==="
+          kubectl get ingressroute -n n8n-carpiftw
+
+          echo ""
+          echo "=== Certificates ==="
+          kubectl get certificate -n n8n-carpiftw
+
+          echo ""
+          echo "=== Recent n8n logs ==="
+          kubectl logs -l app=n8n -n n8n-carpiftw --tail=20
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "======================================"
+          echo "Deployment Summary"
+          echo "======================================"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "======================================"
+          echo ""
+          echo "n8n should be accessible at:"
+          echo "https://n8n.carpiftw.cz"
+          echo "======================================"
