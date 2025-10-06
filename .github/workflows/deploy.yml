@@ -6,7 +6,6 @@ on:
       - master
     paths:
       - 'k8s/**'
-      - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       reason:
@@ -37,7 +36,7 @@ env:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
