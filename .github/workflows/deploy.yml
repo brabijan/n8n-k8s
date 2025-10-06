@@ -3,7 +3,7 @@ name: Deploy n8n to Kubernetes
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'k8s/**'
       - '.github/workflows/deploy.yml'
