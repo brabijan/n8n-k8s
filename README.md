@@ -55,10 +55,12 @@ V GitHub repozitáři nastavte následující secrets:
 # Kubernetes přístup
 KUBECONFIG              # Obsah kubeconfig souboru
 
-# PostgreSQL
-POSTGRES_DATABASE       # Například: n8n
-POSTGRES_USER          # Například: n8n
-POSTGRES_PASSWORD      # Vygenerujte: openssl rand -base64 32
+# External PostgreSQL Database
+DATABASE_HOST           # Například: postgres.example.com
+DATABASE_PORT           # Například: 5432 (volitelné)
+DATABASE_NAME           # Například: n8n
+DATABASE_USER           # Například: n8n
+DATABASE_PASSWORD       # Heslo pro databázi
 
 # n8n konfigurace
 N8N_ENCRYPTION_KEY     # Vygenerujte: openssl rand -base64 32 (NIKDY NEMĚNIT!)
@@ -66,22 +68,9 @@ N8N_ENCRYPTION_KEY     # Vygenerujte: openssl rand -base64 32 (NIKDY NEMĚNIT!)
 
 Detailní instrukce: [GITHUB_SETUP.md](GITHUB_SETUP.md)
 
-### 2. Setup Self-hosted Runner
+### 2. GitHub Actions Runner
 
-```bash
-# Na serveru s přístupem ke clusteru
-mkdir actions-runner && cd actions-runner
-curl -o actions-runner-linux-x64.tar.gz -L \
-  https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-linux-x64-2.311.0.tar.gz
-tar xzf actions-runner-linux-x64.tar.gz
-
-# Konfigurace (získejte token z GitHub → Settings → Actions → Runners)
-./config.sh --url https://github.com/brabijan/n8n-k8s --token YOUR_TOKEN
-
-# Spuštění jako služba
-sudo ./svc.sh install
-sudo ./svc.sh start
-```
+Workflow používá GitHub hosted runner (`ubuntu-latest`), takže není potřeba instalovat self-hosted runner.
 
 ### 3. První nasazení
 

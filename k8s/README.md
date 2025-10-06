@@ -20,9 +20,7 @@ k8s/
 ├── n8n-configmap.yaml          # Konfigurace n8n
 ├── pvc-data.yaml               # PVC pro n8n data (5Gi)
 ├── certificate.yaml            # SSL certifikát
-├── ingress.yaml                # Traefik IngressRoute s HTTPS
-├── postgres-statefulset.yaml   # PostgreSQL databáze
-└── postgres-service.yaml       # PostgreSQL Service
+└── ingress.yaml                # Traefik IngressRoute s HTTPS
 ```
 
 ## Před nasazením
@@ -31,15 +29,19 @@ k8s/
 
 Před nasazením je nutné vytvořit dva Kubernetes secrets:
 
-#### PostgreSQL Secret
+#### Database Secret (External PostgreSQL)
 
 ```bash
-kubectl create secret generic postgres-secret \
-  --from-literal=database=n8n \
+kubectl create secret generic database-secret \
+  --from-literal=host=YOUR_DB_HOST \
+  --from-literal=port=5432 \
+  --from-literal=dbname=n8n \
   --from-literal=user=n8n \
   --from-literal=password=VASE_HESLO_PRO_POSTGRES \
   -n n8n-carpiftw
 ```
+
+**Poznámka:** Používá se externí PostgreSQL server, ne PostgreSQL v clusteru.
 
 #### n8n Encryption Key Secret
 
@@ -69,20 +71,7 @@ kubectl apply -f namespace.yaml
 
 ### Krok 2: Vytvořit secrets (viz výše)
 
-### Krok 3: Nasadit PostgreSQL
-
-```bash
-kubectl apply -f postgres-statefulset.yaml
-kubectl apply -f postgres-service.yaml
-```
-
-Počkat, až PostgreSQL naběhne:
-
-```bash
-kubectl wait --for=condition=ready pod -l app=postgres -n n8n-carpiftw --timeout=300s
-```
-
-### Krok 4: Nasadit n8n
+### Krok 3: Nasadit n8n
 
 ```bash
 kubectl apply -f pvc-data.yaml
@@ -91,7 +80,7 @@ kubectl apply -f n8n-deployment.yaml
 kubectl apply -f n8n-service.yaml
 ```
 
-### Krok 5: Nastavit SSL a Ingress
+### Krok 4: Nastavit SSL a Ingress
 
 ```bash
 kubectl apply -f certificate.yaml

@@ -57,19 +57,28 @@ jobs:
           ${{ env.KUBECONFIG_SETUP }}
           echo "Namespace created/verified"
 
-      - name: Create PostgreSQL secret
+      - name: Create database secret
         run: |
           ${{ env.KUBECONFIG_SETUP }}
 
-          # Create Kubernetes secret for PostgreSQL credentials
-          kubectl create secret generic postgres-secret \
+          # Create Kubernetes secret for external database credentials
+          CMD="kubectl create secret generic database-secret \
             --namespace=n8n-carpiftw \
-            --from-literal=database="${{ secrets.POSTGRES_DATABASE }}" \
-            --from-literal=user="${{ secrets.POSTGRES_USER }}" \
-            --from-literal=password="${{ secrets.POSTGRES_PASSWORD }}" \
-            --dry-run=client -o yaml | kubectl apply -f -
+            --from-literal=host=\"${{ secrets.DATABASE_HOST }}\" \
+            --from-literal=user=\"${{ secrets.DATABASE_USER }}\" \
+            --from-literal=password=\"${{ secrets.DATABASE_PASSWORD }}\" \
+            --from-literal=dbname=\"${{ secrets.DATABASE_NAME }}\" \
+            --dry-run=client -o yaml"
 
-          echo "PostgreSQL secret created/updated"
+          # Add port if defined
+          if [ ! -z "${{ secrets.DATABASE_PORT }}" ]; then
+            CMD="$CMD --from-literal=port=\"${{ secrets.DATABASE_PORT }}\""
+          fi
+
+          # Apply secret
+          eval "$CMD | kubectl apply -f -"
+
+          echo "Database secret created/updated"
 
       - name: Create n8n encryption key secret
         run: |
@@ -82,31 +91,6 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
           echo "n8n encryption key secret created/updated"
-
-      - name: Deploy PostgreSQL
-        run: |
-          ${{ env.KUBECONFIG_SETUP }}
-
-          # Deploy PostgreSQL StatefulSet and Service
-          kubectl apply -f k8s/postgres-statefulset.yaml
-          kubectl apply -f k8s/postgres-service.yaml
-
-          echo "PostgreSQL manifests applied"
-
-      - name: Wait for PostgreSQL to be ready
-        run: |
-          ${{ env.KUBECONFIG_SETUP }}
-
-          # Wait for PostgreSQL to be ready (max 3 minutes)
-          kubectl wait --for=condition=ready pod -l app=postgres \
-            -n n8n-carpiftw --timeout=180s || {
-              echo "PostgreSQL pod did not become ready in time"
-              kubectl describe pod -l app=postgres -n n8n-carpiftw
-              kubectl logs -l app=postgres -n n8n-carpiftw --tail=50
-              exit 1
-            }
-
-          echo "PostgreSQL is ready"
 
       - name: Deploy n8n application
         run: |

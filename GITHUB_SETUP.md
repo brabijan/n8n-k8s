@@ -28,29 +28,38 @@ Celý obsah kubeconfig souboru pro přístup do Kubernetes clusteru.
 cat ~/.kube/config
 ```
 
-### PostgreSQL databáze
+### External PostgreSQL Database
 
-#### `POSTGRES_DATABASE`
+#### `DATABASE_HOST`
+Hostname nebo IP adresa externího PostgreSQL serveru.
+
+```
+Příklad: postgres.example.com
+```
+
+#### `DATABASE_PORT`
+Port PostgreSQL serveru (volitelné, výchozí 5432).
+
+```
+Příklad: 5432
+```
+
+#### `DATABASE_NAME`
 Název databáze pro n8n.
 
 ```
 Příklad: n8n
 ```
 
-#### `POSTGRES_USER`
+#### `DATABASE_USER`
 Uživatelské jméno pro PostgreSQL.
 
 ```
 Příklad: n8n
 ```
 
-#### `POSTGRES_PASSWORD`
+#### `DATABASE_PASSWORD`
 Heslo pro PostgreSQL uživatele.
-
-```bash
-# Vygenerování silného hesla
-openssl rand -base64 32
-```
 
 ### n8n konfigurace
 

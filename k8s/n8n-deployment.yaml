@@ -33,27 +33,34 @@ spec:
               value: "Europe/Prague"
             - name: NODE_ENV
               value: "production"
-            # Databáze - PostgreSQL
+            # Databáze - External PostgreSQL
             - name: DB_TYPE
               value: "postgresdb"
             - name: DB_POSTGRESDB_HOST
-              value: "postgres-service"
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: host
             - name: DB_POSTGRESDB_PORT
-              value: "5432"
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: port
+                  optional: true
             - name: DB_POSTGRESDB_DATABASE
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: database
+                  name: database-secret
+                  key: dbname
             - name: DB_POSTGRESDB_USER
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
+                  name: database-secret
                   key: user
             - name: DB_POSTGRESDB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
+                  name: database-secret
                   key: password
             # Encryption key - důležité pro bezpečnost
             - name: N8N_ENCRYPTION_KEY
